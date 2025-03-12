@@ -153,14 +153,7 @@ def eval_dynamic(
     nn_paths = []
 
     for coord in starting_coords:
-        dijkstra_info = dijkstra_fwd(
-            feature_function=feature_function_,
-            vertices=vertices,
-            source=int(coord),
-            neighbors=neighbors_tensor,
-            max_len=max_len,
-            node_f=target,
-        )
+        print(coord)
         # call dijsktra's and the nn
         nn_path, info, outside, fail_loc = find_nn_path(
             feature_function=feature_function_.float(),
@@ -176,6 +169,7 @@ def eval_dynamic(
 
         # if the network fails, terminate the loop
         if info is False:
+            print('Failed!')
             if outside is True:
                 n_departures += 1
                 dijkstra_cost_vector.append(0)
@@ -186,6 +180,15 @@ def eval_dynamic(
                 dijkstra_cost_vector.append(-1)
                 nn_cost_vector.append(-1)
             continue
+
+        dijkstra_info = dijkstra_fwd(
+            feature_function=feature_function_,
+            vertices=vertices,
+            source=int(coord),
+            neighbors=neighbors_tensor,
+            max_len=max_len,
+            node_f=target,
+        )
 
         # recover the Dijkstra algorithm path
         node = target

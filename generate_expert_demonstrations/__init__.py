@@ -30,7 +30,7 @@ def make_time_dependent(field_a, field_b, steps):
     evolving_threat = multiplier_a * field_a + multiplier_b * field_b
 
     # formatting
-    max_value = torch.max(evolving_threat).view(1, 1)
+    max_value = 10 * torch.max(evolving_threat).view(1, 1)
     evolving_threat = evolving_threat.view(-1, 1)
     evolving_threat = torch.cat((evolving_threat, max_value))
 

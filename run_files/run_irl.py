@@ -25,20 +25,20 @@ from evaluation import dijkstra_evaluation
 from nn_architecture.deep_Q_learning import DeepQLearning
 
 torch.set_printoptions(linewidth=800)
-print(datetime.datetime.now())
+print('Started Training. The current time is ', datetime.datetime.now())
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # USER-SPECIFIED PARAMETERS
-dynamic_threat = False  # False if static, True if time-varying
+dynamic_threat = True  # False if static, True if time-varying
 number_fields = (
-    4  # if not time-varying, set how many threat fields to use during training
+    1  # if not time-varying, set how many threat fields to use during training
 )
-num = 500  # number of expert paths to calculate (per threat field)
+num = 300  # number of expert paths to calculate (per threat field)
 
 # for the static case only
 new_field = False  # do evaluation on a new threat field?
 single_distance = (
-    False  # True if using {distance} in reward system, False if using {distance_x, distance_y}
+    True  # True if using {distance} in reward system, False if using {distance_x, distance_y}
 )
 lambda_val = 0  # lambda adds a weight to the total length of the path
 heuristic = 0  # heuristics adds a weight to the y-distance from the finish (single distance must be False)
@@ -49,7 +49,7 @@ threat_field_name = "../01_data/custom_fields/custom_threat.csv"    # name of de
 
 # values set only for time-varying fields
 transition_steps = (
-    5  # how many steps to fully transition from one threat field to another
+    50  # how many steps to fully transition from one threat field to another
 )
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,19 +77,19 @@ if dynamic_threat is True:
     feature_dims = 2    # not accounting for x and y distance for time-varying fields
 batch_size = 1  # number of samples to take per batch
 learning_rate = 0.05  # learning rate
-epochs = 10  # number of epochs for the main training loop
+epochs = 300  # number of epochs for the main training loop
 criterion = nn.MSELoss()
-reward_min_accuracy = 1  # value to terminate the IRL loop
+reward_min_accuracy = 10  # value to terminate the IRL loop
 reward_clip_value = 100
 
 # value function
 q_tau = 0.0001  # rate at which to update the target_net variable inside the Q-learning module
-q_lr = 0.0005  # learning rate for Q-learning
+q_lr = 0.0001  # learning rate for Q-learning
 q_criterion = (
     nn.HuberLoss()
 )  # criterion to determine the loss during training
 q_features = 5 * feature_dims  # number of features to take into consideration
-q_pretraining = 1  # times to run q_learning inside each reward function loop
+q_pretraining = 50  # times to run q_learning inside each reward function loop
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # select the device to use: cpu, mps, or gpu (mps/cuda is faster)
@@ -98,7 +98,7 @@ device = torch.device(
     if torch.cuda.is_available()
     else "mps" if torch.backends.mps.is_available() else "cpu"
 )
-print(device)
+print('The device used for training is \t', device)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # NEIGHBORS OF FOUR AND DISTANCES
@@ -201,7 +201,8 @@ q_learning = DeepQLearning(
     criterion=q_criterion,
     path_length=path_length,
     starting_coords=torch.tensor(test_points),
-    reward_dims=feature_dims
+    reward_dims=feature_dims,
+    failed_loc=max_len
 )
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -269,8 +270,7 @@ for epoch in range(epochs):
         failure_counter.append(q_learning_failures.item())
 
     if (
-        (epoch > 10)
-        & (loss.item() < reward_min_accuracy)
+        (loss.item() < reward_min_accuracy)
         & (q_learning_finishes > 0.9 * num)
     ):
         print(epoch)
@@ -278,8 +278,9 @@ for epoch in range(epochs):
         print(q_learning_finishes)
         epochs = epoch + 1
         break
-
-print(datetime.datetime.now())
+print(loss.item())
+print(q_learning_finishes)
+print('Finished Training! The current time is ', datetime.datetime.now())
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # evaluate against Dijkstra's
 (
@@ -357,14 +358,14 @@ final_results.update_xaxes(title_text="Dijkstra Path Length")
 final_results.update_yaxes(title_text="Error [%]")
 final_results.show()
 
-print(n_failures)
-print(n_departures)
+print('Number of Failures: \t', n_failures)
+print('Number of Departures: \t', n_departures)
 
 percent_error = results["Error [%]"]
 average_error = torch.mean(torch.tensor(percent_error).float()).round().item()
-print(average_error)
+print('Average Error (for all successful paths): \t', average_error)
 
-print(datetime.datetime.now())
+print('Finished Analysis! The current time is ', datetime.datetime.now())
 
 # make a dictionary of our data (makes it easier to do analysis later)
 time = datetime.datetime.now()
@@ -375,13 +376,13 @@ file_name = (
     + str(time.day)
     + "_"
     + str(time.hour)
-    + "_"
+    + ":"
     + str(time.minute)
     + "_performance_"
     + str(average_error)[:-2]
     + "_finishes_"
     + str(624 - n_departures - n_failures)
-    + "random.pkl"
+    + ".pkl"
 )
 my_dict = {
     "dims": target_loc,

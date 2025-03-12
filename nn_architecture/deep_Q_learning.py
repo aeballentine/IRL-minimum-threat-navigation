@@ -30,6 +30,7 @@ class DeepQLearning:
         criterion,
         path_length,
         starting_coords,
+        failed_loc
     ):
         """
         Deep Q Learning module, adapted from Mnih et. al. (2013)
@@ -97,10 +98,10 @@ class DeepQLearning:
         self.moving_locations = None
         self.relevant_features = None
         self.all_features = None
-        self.not_moving_locations = None
+        self.not_moving_indices = None
         self.unique_locations = None
 
-        self.fail_loc = -1
+        self.fail_loc = failed_loc
 
     def select_action(self):
         # we have two cases: take a random sample of action or sample according to the current policy
@@ -113,17 +114,18 @@ class DeepQLearning:
         if sample > eps_threshold:  # decide actions according to the policy
             with torch.no_grad():
                 actions = (
-                    self.policy_net(self.relevant_features.to(self.device)).max(1).indices
+                    self.policy_net(self.all_features.to(self.device)).max(1).indices
                 )
         else:  # generate random actions - one for each point in the threat field (not finishes/failures)
-            actions = torch.randint(0, 4, (len(self.relevant_features),)).to(self.device)
+            actions = torch.randint(0, 4, (len(self.all_features),)).to(self.device)
         self.step += 1  # incremement step by 1
         return actions
 
     def find_next_state(self, actions):
+        original_actions = actions[self.moving_locations]   # set of actions if we don't care about finish/fail locs
         # neighbors should have rows corresponding to locations and columns corresponding to locations
         # find the new locations according to the moving indices & corresponding actions
-        next_locs = self.neighbors[self.moving_indices, actions]
+        next_locs = self.neighbors[self.moving_indices, original_actions]
         # find the new features according to the next locs
         new_features = self.all_features[next_locs].to(self.device)
         with torch.no_grad():
@@ -137,7 +139,7 @@ class DeepQLearning:
         next_locs = next_locs[moving_locs]  # filter the new locations to only those which are not finishes/failures
         new_actions = actions[next_locs]    # find the new actions from the original action vector & new locations
 
-        return rewards, new_features, moving_locs, new_actions, failed, finished
+        return original_actions, rewards, new_features, moving_locs, new_actions, failed, finished
 
     def optimize_model(
         self,
@@ -189,23 +191,22 @@ class DeepQLearning:
             self.target_loc, len(self.all_features), self.target_loc + 1
         )   # this marks where all the finish locations are (if time-varying)
         self.moving_locations[finish_locations] = False
-        self.relevant_features = copy.deepcopy(self.all_features[self.moving_locations])    # features for moving locations
-
+        self.relevant_features = copy.deepcopy(self.all_features[self.moving_locations]).to(self.device)    # features for moving locations
         not_moving_indices = ~self.moving_locations  # for failures and finishes
 
         self.unique_locations = torch.arange(0, len(self.all_features), 1).to(
             self.device
         )
-        self.not_moving_locations = self.unique_locations[not_moving_indices]   # indices for finishes/failures
-        self.moving_indices = self.unique_locations[self.moving_locations]      # inidices if not finished/failed
+        self.not_moving_indices = self.unique_locations[not_moving_indices]   # indices for finishes/failures
+        self.moving_indices = self.unique_locations[self.moving_locations]      # indices if not finished/failed
 
         action = self.select_action()
-        rewards, new_features, not_finished, new_actions, failed, finished = (
+        actions, rewards, new_features, not_finished, new_actions, failed, finished = (
             self.find_next_state(actions=action)
         )
 
         loss = self.optimize_model(
-            actions=action.view(-1, 1),
+            actions=actions.view(-1, 1),
             new_features=new_features.to(self.device),
             rewards=rewards,
             not_finished=not_finished,
