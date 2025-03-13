@@ -42,8 +42,8 @@ distance = torch.concat((distance, max_distance))
 
 # load the relevant feature functions for each
 # easy threat field:
-file_path_a = '2_23_heuristic_1_performance_0_finishes_624v2.pkl'
-file_path_b = '2_23_heuristic_0_performance_1_finishes_624v2.pkl'
+file_path_a = '../01_data/paper_data/policy_discrimination/2_23_heuristic_1_performance_0_finishes_624v2.pkl'
+file_path_b = '../01_data/paper_data/policy_discrimination/2_23_heuristic_0_performance_1_finishes_624v2.pkl'
 # random file:
 # file_path_a = '2_23_heuristic_0_performance_1_finishes_624random.pkl'
 # file_path_b = '2_23_heuristic_1_performance_2_finishes_624random.pkl'

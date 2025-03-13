@@ -76,7 +76,7 @@ if __name__ == '__main__':
     make_heatmap(threat_field, color='RdYlBu_r')
 
     # plot a single field: Dijkstra's, NN, and error
-    single = pd.read_pickle('../01_data/paper_data/time_invarying/1_15_random_169_performance_2_finishes_624.pkl')
+    single = pd.read_pickle('../01_data/paper_data/static_results/1_15_random_169_performance_2_finishes_624.pkl')
     print(single.keys())
 
     nn_cost = np.array(single['nn_cost'])
@@ -93,7 +93,7 @@ if __name__ == '__main__':
     make_heatmap(percent_error, color='Greys_r')
 
     # plot the difference between a threat field used during training and the performance on a new threat field
-    multi_data = pd.read_pickle('../01_data/multi_threat/1_22_random_909_performance_2_finishes_624.pkl')
+    multi_data = pd.read_pickle('../01_data/paper_data/eval_on_new_threat/1_22_random_909_performance_2_finishes_624.pkl')
     print(multi_data.keys())
 
     threat_test = multi_data['threat_field_test_test'][0]

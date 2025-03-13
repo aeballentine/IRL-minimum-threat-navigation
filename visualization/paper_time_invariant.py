@@ -6,7 +6,7 @@ from heatmap_plotting_standard import make_heatmap
 
 
 # load the data
-data_path = "../01_data/paper_data/time_invarying/"
+data_path = "../01_data/paper_data/static_results/"
 file_list = glob.glob(data_path + "*")
 error = torch.tensor([])
 for file in file_list[:-1]:
